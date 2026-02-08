@@ -1,41 +1,30 @@
 "use client";
-import { useState } from "react";
+import { SetStateAction, useState } from "react";
 import { InputBox } from "../components/exportFiles";
-import useCurrencyInfo from "../hooks/useCurrency";
 
 export default function Home() {
-  // useable hooks 
-  const [amount, setAmount] = useState(0);
-  const [from, setFrom] = useState("usd");
-  const [to, setTo] = useState("pkr");
-  const [convertedAmount, setConvertedAmount] = useState(0);
+  const [usdPerGallon, setUsdPerGallon] = useState(0);
+  const [cadPerLitre, setCadPerLitre] = useState(0);
 
-  const currencyInfo = useCurrencyInfo(from) || {};
+  const USD_TO_CAD = 1.36;        // temporary fixed rate
+  const LITRES_PER_GALLON = 3.78541;
 
-  const options = currencyInfo ? Object.keys(currencyInfo) : [];  // extracted keys 
+  const convertGasPrice = () => {
+    const result =
+      (usdPerGallon / LITRES_PER_GALLON) * USD_TO_CAD;
 
-
-  // swapping function you can also name it swap :]
-  const toggle = () => {
-    setFrom(to);
-    setTo(from);
-    setConvertedAmount(amount * (currencyInfo[to] || 1));
-  };
-
-
-  // currency converter / result handler 
-  const convert = () => {
-    setConvertedAmount(amount * (currencyInfo[to] || 1));
+    setCadPerLitre(result);
   };
 
   return (
     <div
       className="w-full h-screen flex flex-wrap justify-center items-center bg-cover bg-no-repeat"
       style={{
-        backgroundImage: "url('https://ideogram.ai/assets/progressive-image/balanced/response/PWnkG22CQIChtzCWTkEG5A')",
-        backgroundSize: 'cover', // optional to cover the entire element
-        backgroundPosition: 'center', // optional for centering the image
-        height: '100vh', // full viewport height
+        backgroundImage:
+          "url('https://ideogram.ai/assets/progressive-image/balanced/response/PWnkG22CQIChtzCWTkEG5A')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        height: "100vh",
       }}
     >
       <div className="w-full">
@@ -43,44 +32,36 @@ export default function Home() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              convert();
+              convertGasPrice();
             }}
           >
-            <div className="w-full mb-1">
-              <InputBox
-                label="From"
-                amount={amount}
-                currencyOptions={options}
-                onCurrencyChange={(currency: string) => setFrom(currency)}
-                selectCurrency={from}
-                onAmountChange={(amount: number) => setAmount(amount)}
-                className={""}
-                amountDisable={false}
-                currencyDisable={false} />
+            <div className="w-full mb-4">
+              
+            <InputBox
+            label="US Gas Price"
+            amount={usdPerGallon}
+            onAmountChange={setUsdPerGallon}
+            unitLabel="USD / gallon"
+/>
+
+              
             </div>
-            <div className="relative w-full h-0.5">
-              <button
-                type="button"
-                className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 border-2 border-white rounded-md bg-blue-600 text-white px-2 py-0.5"
-                onClick={toggle}
-              >
-                swap
-              </button>
-            </div>
-            <div className="w-full mt-1 mb-4">
-              <InputBox
-                label="To"
-                amount={convertedAmount}
-                currencyOptions={options}
-                onCurrencyChange={(currency: string) => setTo(currency)}
-                selectCurrency={to}
-                amountDisable className={""}
-                currencyDisable={false}
-                onAmountChange={() => { }}
+
+            <div className="w-full mb-4">
+            <InputBox
+                label="Canadian Gas Price"
+                amount={cadPerLitre}
+                onAmountChange={(val: number) => setCadPerLitre(val)}
+                unitLabel="CAD / litre"
+                amountDisable
               />
             </div>
-            <button type="submit" className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg">
-              Convert {from.toUpperCase()} to {to.toUpperCase()}
+
+            <button
+              type="submit"
+              className="w-full bg-blue-600 text-white px-4 py-3 rounded-lg"
+            >
+              Convert USD / gallon → CAD / litre
             </button>
           </form>
         </div>
