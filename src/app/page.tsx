@@ -1,33 +1,37 @@
 "use client";
 import { useState, useEffect } from "react";
-import { InputBox } from "../components/exportFiles";
+import { InputBox } from "../components/InputBox";
 import { carTankSizes } from "@/data/carTankSizes";
 import { getTankSize } from "@/utils/getTankSize";
 
-// Types for strong TS safety
 type Make = keyof typeof carTankSizes;
 type Model<M extends Make> = keyof typeof carTankSizes[M];
 
 export default function Home() {
+  // Numeric state
   const [usdPerGallon, setUsdPerGallon] = useState(0);
-  const [cadPerLitre, setCadPerLitre] = useState(0);
+  const [manualCadPrice, setManualCadPrice] = useState(0);
+  const [convertedCadPrice, setConvertedCadPrice] = useState(0);
+
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   const [mode, setMode] = useState<"usdToCad" | "cadToUsd">("usdToCad");
 
-  // Car savings tool state
   const [selectedMake, setSelectedMake] = useState<Make | "">("");
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [tankSize, setTankSize] = useState<number | null>(null);
   const [fillLevel, setFillLevel] = useState(0.5);
+  const [startLevel, setStartLevel] = useState(0.25); // default quarter tank
+  const [endLevel, setEndLevel] = useState(1);        // default full tank
+
   const [savings, setSavings] = useState<number | null>(null);
 
   const LITRES_PER_GALLON = 3.78541;
   const CACHE_KEY = "usd_to_cad_rate";
   const CACHE_DURATION = 60 * 60 * 1000;
 
-  // Load exchange rate with caching
+  // Load exchange rate
   useEffect(() => {
     async function loadRate() {
       try {
@@ -46,6 +50,7 @@ export default function Home() {
 
         const res = await fetch("https://open.er-api.com/v6/latest/USD");
         const data = await res.json();
+
         const rate = data.rates.CAD;
         const timestamp = Date.now();
 
@@ -64,7 +69,7 @@ export default function Home() {
     loadRate();
   }, []);
 
-  // Auto-set tank size when make/model selected
+  // Auto-set tank size
   useEffect(() => {
     if (!selectedMake || !selectedModel) {
       setTankSize(null);
@@ -79,34 +84,43 @@ export default function Home() {
     setTankSize(tank?.tankSizeL ?? null);
   }, [selectedMake, selectedModel]);
 
-  // Convert gas price
+  // Converter logic
   const convertGasPrice = () => {
     if (!exchangeRate) return;
 
     if (mode === "usdToCad") {
       const result = (usdPerGallon / LITRES_PER_GALLON) * exchangeRate;
-      setCadPerLitre(result);
+      setConvertedCadPrice(result);
     } else {
-      const result = (cadPerLitre * (1 / exchangeRate)) * LITRES_PER_GALLON;
+      const result = (manualCadPrice * (1 / exchangeRate)) * LITRES_PER_GALLON;
       setUsdPerGallon(result);
     }
   };
 
-  // Calculate savings
+  // Savings logic
   const calculateSavings = () => {
     if (!exchangeRate || !tankSize) return;
 
-    const litresAdded = tankSize * fillLevel;
-    const cadPrice = cadPerLitre;
-    const usdConvertedToCad = (usdPerGallon / LITRES_PER_GALLON) * exchangeRate;
+    const litresAdded = tankSize * Math.max(0, endLevel - startLevel);
+
+
+    const usdPrice = usdPerGallon;
+    const cadPrice = manualCadPrice;
+
+    const usdPriceInCad = (usdPrice / LITRES_PER_GALLON) * exchangeRate;
 
     const costInCanada = litresAdded * cadPrice;
-    const costInUS = litresAdded * usdConvertedToCad;
-
+    const costInUS = litresAdded * usdPriceInCad;
+    
     setSavings(costInCanada - costInUS);
+
   };
 
-  // Dropdown lists
+  // Fix negative zero
+  const normalizedSavings =
+  savings !== null && Math.abs(savings) < 0.005 ? 0 : savings;
+
+
   const makes = Object.keys(carTankSizes) as Make[];
   const models =
     selectedMake !== ""
@@ -118,7 +132,6 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-between bg-gradient-to-b from-gray-50 to-white">
 
-      {/* Header */}
       <header className="pt-12 text-center">
         <h1 className="text-4xl font-semibold text-gray-800 tracking-tight">
           Gas Price Converter
@@ -128,13 +141,11 @@ export default function Home() {
         </p>
       </header>
 
-      {/* Main Section */}
       <main className="w-full flex flex-col items-center px-4 space-y-10">
 
-        {/* Converter Card */}
+        {/* Converter */}
         <div className="w-full max-w-md border border-gray-200 rounded-xl p-6 shadow-md bg-white space-y-4">
 
-          {/* Toggle */}
           <div className="flex w-full bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setMode("usdToCad")}
@@ -153,7 +164,6 @@ export default function Home() {
             </button>
           </div>
 
-          {/* Dynamic Live Rate */}
           {exchangeRate && (
             <p className="text-sm text-gray-600 text-center">
               {mode === "usdToCad" ? (
@@ -164,7 +174,24 @@ export default function Home() {
             </p>
           )}
 
-          {/* Converter Form */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-700">
+                Canadian Gas Price (Manual Entry)
+              </p>
+              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                Manual Mode
+              </span>
+            </div>
+
+            <InputBox
+              label="CAD Price per Litre (Manual)"
+              amount={manualCadPrice}
+              onAmountChange={setManualCadPrice}
+              unitLabel="CAD / litre"
+            />
+          </div>
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -182,9 +209,9 @@ export default function Home() {
                 />
 
                 <InputBox
-                  label="Canadian Gas Price"
-                  amount={cadPerLitre}
-                  onAmountChange={setCadPerLitre}
+                  label="Converted CAD Price"
+                  amount={convertedCadPrice}
+                  onAmountChange={setConvertedCadPrice}
                   unitLabel="CAD / litre"
                   amountDisable
                 />
@@ -192,14 +219,14 @@ export default function Home() {
             ) : (
               <>
                 <InputBox
-                  label="Canadian Gas Price"
-                  amount={cadPerLitre}
-                  onAmountChange={setCadPerLitre}
+                  label="Canadian Gas Price (Manual)"
+                  amount={manualCadPrice}
+                  onAmountChange={setManualCadPrice}
                   unitLabel="CAD / litre"
                 />
 
                 <InputBox
-                  label="US Gas Price"
+                  label="Converted USD Price"
                   amount={usdPerGallon}
                   onAmountChange={setUsdPerGallon}
                   unitLabel="USD / gallon"
@@ -219,131 +246,165 @@ export default function Home() {
         </div>
 
         {/* Savings Calculator */}
-        <div className="w-full max-w-md border border-gray-200 rounded-xl p-6 shadow-md bg-white space-y-4">
+<div className="w-full max-w-md border border-gray-200 rounded-xl p-6 shadow-md bg-white space-y-4">
 
-          <h2 className="text-xl font-semibold text-gray-800 text-center">
-            Car Fuel Savings Calculator
-          </h2>
+<h2 className="text-xl font-semibold text-gray-800 text-center">
+  Car Fuel Savings Calculator
+</h2>
 
-          {/* Make */}
-          <select
-            value={selectedMake}
-            onChange={(e) => {
-              const make = e.target.value as Make | "";
-              setSelectedMake(make);
-              setSelectedModel("");
-              setTankSize(null);
-            }}
-            className="w-full p-2 rounded border"
-          >
-            <option value="">Select Make</option>
-            {makes.map((make) => (
-              <option key={make} value={make}>{make}</option>
-            ))}
-          </select>
+<div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+  <p className="text-sm text-gray-700 font-medium">
+    US Gas Price (from converter)
+  </p>
+  <p className="text-lg font-semibold text-gray-900 mt-1">
+    {usdPerGallon === 0 ? "—" : usdPerGallon.toFixed(3)} USD / gallon
+  </p>
+</div>
 
-          {/* Model */}
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            className="w-full p-2 rounded border"
-            disabled={!selectedMake}
-          >
-            <option value="">Select Model</option>
-            {models.map((model) => (
-              <option key={model} value={model}>{model}</option>
-            ))}
-          </select>
+<div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+  <p className="text-sm text-gray-700 font-medium">
+    Canadian Gas Price (Manual)
+  </p>
+  <p className="text-lg font-semibold text-gray-900 mt-1">
+    {manualCadPrice === 0 ? "—" : manualCadPrice.toFixed(3)} CAD / litre
+  </p>
+</div>
 
-          {/* Tank Size */}
-          {tankSize && (
-            <p className="text-sm text-gray-600">
-              Tank size: <span className="font-medium">{tankSize} L</span>
-            </p>
-          )}
+<select
+  value={selectedMake}
+  onChange={(e) => {
+    const make = e.target.value as Make | "";
+    setSelectedMake(make);
+    setSelectedModel("");
+    setTankSize(null);
+  }}
+  className="w-full p-2 rounded border"
+>
+  <option value="">Select Make</option>
+  {makes.map((make) => (
+    <option key={make} value={make}>{make}</option>
+  ))}
+</select>
 
- {/* Fuel Gauge */}
+<select
+  value={selectedModel}
+  onChange={(e) => setSelectedModel(e.target.value)}
+  className="w-full p-2 rounded border"
+  disabled={!selectedMake}
+>
+  <option value="">Select Model</option>
+  {models.map((model) => (
+    <option key={model} value={model}>{model}</option>
+  ))}
+</select>
+
+{tankSize && (
+  <p className="text-sm text-gray-600">
+    Tank size: <span className="font-medium">{tankSize} L</span>
+  </p>
+)}
+
+{/* Fuel Gauge */}
 <div className="w-full flex flex-col items-center mt-4">
 
-<div className="relative w-48 h-24">
-  {/* Gauge Arc */}
-  <svg viewBox="0 0 100 50" className="w-full h-full">
-    <path
-      d="M10 50 A40 40 0 0 1 90 50"
-      fill="none"
-      stroke="#e5e7eb"
-      strokeWidth="8"
+  {/* ENDING LEVEL GAUGE */}
+  <div className="relative w-48 h-24 mb-6">
+    <svg viewBox="0 0 100 50" className="w-full h-full">
+      {/* Background arc */}
+      <path
+        d="M10 50 A40 40 0 0 1 90 50"
+        fill="none"
+        stroke="#e5e7eb"
+        strokeWidth="8"
+      />
+
+      {/* Green fill arc (ending level) */}
+      <path
+        d="M10 50 A40 40 0 0 1 90 50"
+        fill="none"
+        stroke="#22c55e"
+        strokeWidth="8"
+        strokeDasharray="126"
+        strokeDashoffset={126 * (1 - endLevel)}
+        className="transition-all duration-300"
+      />
+    </svg>
+
+    {/* Needle */}
+    <div
+      className="absolute left-1/2 bottom-0 w-1 h-20 bg-red-600"
+      style={{
+        transform: `translateX(-50%) rotate(${endLevel * 180 - 90}deg)`,
+        transformOrigin: "50% 100%",
+        transition: "transform 0.3s ease",
+      }}
     />
-    <path
-      d="M10 50 A40 40 0 0 1 90 50"
-      fill="none"
-      stroke="#22c55e"
-      strokeWidth="8"
-      strokeDasharray="100"
-      strokeDashoffset={100 - fillLevel * 100}
-      className="transition-all duration-300"
+
+    {/* Needle pivot */}
+    <div className="absolute left-1/2 bottom-0 w-4 h-4 bg-gray-700 rounded-full transform -translate-x-1/2 translate-y-1/2" />
+  </div>
+
+  {/* START LEVEL SLIDER */}
+  <div className="w-full mb-4">
+    <p className="text-sm text-gray-700 font-medium mb-1">
+      Starting Fuel Level
+    </p>
+    <input
+      type="range"
+      min={0}
+      max={1}
+      step={0.01}
+      value={startLevel}
+      onChange={(e) => setStartLevel(Number(e.target.value))}
+      className="w-full accent-blue-600"
     />
-  </svg>
+    <p className="text-xs text-gray-600 mt-1">
+      {Math.round(startLevel * 100)}%
+    </p>
+  </div>
 
-  {/* Needle */}
-  <div
-    className="absolute left-1/2 bottom-0 w-1 h-20 bg-red-600 origin-bottom"
-    style={{
-      transform: `translateX(-50%) rotate(${fillLevel * 180 - 90}deg)`,
-      transition: "transform 0.3s ease",
-    }}
-  />
+  {/* END LEVEL SLIDER */}
+  <div className="w-full">
+    <p className="text-sm text-gray-700 font-medium mb-1">
+      Ending Fuel Level (after filling)
+    </p>
+    <input
+      type="range"
+      min={0}
+      max={1}
+      step={0.01}
+      value={endLevel}
+      onChange={(e) => setEndLevel(Number(e.target.value))}
+      className="w-full accent-green-600"
+    />
+    <p className="text-xs text-gray-600 mt-1">
+      {Math.round(endLevel * 100)}%
+    </p>
+  </div>
 
-  {/* Center cap */}
-  <div className="absolute left-1/2 bottom-0 w-4 h-4 bg-gray-700 rounded-full transform -translate-x-1/2 translate-y-1/2" />
 </div>
 
-{/* Labels */}
-<div className="flex justify-between w-48 text-xs text-gray-600 mt-1">
-  <span>E</span>
-  <span>1/4</span>
-  <span>1/2</span>
-  <span>3/4</span>
-  <span>F</span>
+<button
+  onClick={calculateSavings}
+  className="w-full bg-green-600 text-white px-4 py-3 rounded-lg"
+  disabled={!tankSize || !exchangeRate}
+>
+  Calculate Savings
+</button>
+
+{normalizedSavings !== null && (
+  <p className="text-center text-lg font-semibold text-green-700">
+    You saved ${normalizedSavings.toFixed(2)} CAD by filling up in the U.S.
+  </p>
+)}
+
 </div>
 
-{/* Slider Control */}
-<input
-  type="range"
-  min={0}
-  max={1}
-  step={0.01}
-  value={fillLevel}
-  onChange={(e) => setFillLevel(Number(e.target.value))}
-  className="w-full mt-4 accent-green-600"
-/>
-
-<p className="text-sm text-gray-700 mt-1">
-  Fuel Level: <span className="font-medium">{(fillLevel * 100).toFixed(0)}%</span>
-</p>
-</div>
-
-          <button
-            onClick={calculateSavings}
-            className="w-full bg-green-600 text-white px-4 py-3 rounded-lg"
-            disabled={!tankSize || !exchangeRate}
-          >
-            Calculate Savings
-          </button>
-
-          {savings !== null && (
-            <p className="text-center text-lg font-semibold text-green-700">
-              You saved ${savings.toFixed(2)} CAD by filling up in the U.S.
-            </p>
-          )}
-        </div>
       </main>
 
-      {/* Footer */}
-      <footer className="pb-6 text-center text-gray-400 text-sm">
-        Live rates from open.er-api.com
+      <footer className="w-full py-4 text-center text-sm text-gray-500">
+        &copy; 2024 Gas Price Converter. All rights reserved.
       </footer>
-
     </div>
   );
 }
