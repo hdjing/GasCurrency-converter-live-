@@ -8,7 +8,7 @@ type Make = keyof typeof carTankSizes;
 type Model<M extends Make> = keyof typeof carTankSizes[M];
 
 export default function Home() {
-  // Numeric state
+  // Converter state
   const [usdPerGallon, setUsdPerGallon] = useState(0);
   const [manualCadPrice, setManualCadPrice] = useState(0);
   const [convertedCadPrice, setConvertedCadPrice] = useState(0);
@@ -18,13 +18,19 @@ export default function Home() {
 
   const [mode, setMode] = useState<"usdToCad" | "cadToUsd">("usdToCad");
 
+  // Car + tank size
   const [selectedMake, setSelectedMake] = useState<Make | "">("");
   const [selectedModel, setSelectedModel] = useState<string>("");
   const [tankSize, setTankSize] = useState<number | null>(null);
-  const [fillLevel, setFillLevel] = useState(0.5);
-  const [startLevel, setStartLevel] = useState(0.25); // default quarter tank
-  const [endLevel, setEndLevel] = useState(1);        // default full tank
 
+  // Fuel levels
+  const [startLevel, setStartLevel] = useState(0.25);
+  const [endLevel, setEndLevel] = useState(1);
+
+  // ⭐ Dynamic gauge level (always shows current tank level)
+  const [activeGaugeLevel, setActiveGaugeLevel] = useState(endLevel);
+
+  // Savings
   const [savings, setSavings] = useState<number | null>(null);
 
   const LITRES_PER_GALLON = 3.78541;
@@ -97,29 +103,26 @@ export default function Home() {
     }
   };
 
+  // Litres added
+  const litresAdded = tankSize
+    ? tankSize * Math.max(0, endLevel - startLevel)
+    : 0;
+
   // Savings logic
   const calculateSavings = () => {
     if (!exchangeRate || !tankSize) return;
 
-    const litresAdded = tankSize * Math.max(0, endLevel - startLevel);
+    const usdPriceInCad = (usdPerGallon / LITRES_PER_GALLON) * exchangeRate;
 
-
-    const usdPrice = usdPerGallon;
-    const cadPrice = manualCadPrice;
-
-    const usdPriceInCad = (usdPrice / LITRES_PER_GALLON) * exchangeRate;
-
-    const costInCanada = litresAdded * cadPrice;
+    const costInCanada = litresAdded * manualCadPrice;
     const costInUS = litresAdded * usdPriceInCad;
-    
-    setSavings(costInCanada - costInUS);
 
+    setSavings(costInCanada - costInUS);
   };
 
   // Fix negative zero
   const normalizedSavings =
-  savings !== null && Math.abs(savings) < 0.005 ? 0 : savings;
-
+    savings !== null && Math.abs(savings) < 0.005 ? 0 : savings;
 
   const makes = Object.keys(carTankSizes) as Make[];
   const models =
@@ -174,23 +177,7 @@ export default function Home() {
             </p>
           )}
 
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-gray-700">
-                Canadian Gas Price (Manual Entry)
-              </p>
-              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
-                Manual Mode
-              </span>
-            </div>
-
-            <InputBox
-              label="CAD Price per Litre (Manual)"
-              amount={manualCadPrice}
-              onAmountChange={setManualCadPrice}
-              unitLabel="CAD / litre"
-            />
-          </div>
+          
 
           <form
             onSubmit={(e) => {
@@ -246,164 +233,234 @@ export default function Home() {
         </div>
 
         {/* Savings Calculator */}
-<div className="w-full max-w-md border border-gray-200 rounded-xl p-6 shadow-md bg-white space-y-4">
+        <div className="w-full max-w-md border border-gray-200 rounded-xl p-6 shadow-md bg-white space-y-4">
 
-<h2 className="text-xl font-semibold text-gray-800 text-center">
-  Car Fuel Savings Calculator
-</h2>
+          <h2 className="text-xl font-semibold text-gray-800 text-center">
+            Car Fuel Savings Calculator
+          </h2>
 
-<div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-  <p className="text-sm text-gray-700 font-medium">
-    US Gas Price (from converter)
-  </p>
-  <p className="text-lg font-semibold text-gray-900 mt-1">
-    {usdPerGallon === 0 ? "—" : usdPerGallon.toFixed(3)} USD / gallon
-  </p>
-</div>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium text-gray-700">
+                Canadian Gas Price (Manual Entry)
+              </p>
+              <span className="text-xs bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                Manual Mode
+              </span>
+            </div>
 
-<div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-  <p className="text-sm text-gray-700 font-medium">
-    Canadian Gas Price (Manual)
-  </p>
-  <p className="text-lg font-semibold text-gray-900 mt-1">
-    {manualCadPrice === 0 ? "—" : manualCadPrice.toFixed(3)} CAD / litre
-  </p>
-</div>
+            <InputBox
+              label="CAD Price per Litre (Manual)"
+              amount={manualCadPrice}
+              onAmountChange={setManualCadPrice}
+              unitLabel="CAD / litre"
+            />
+          </div>
 
-<select
-  value={selectedMake}
-  onChange={(e) => {
-    const make = e.target.value as Make | "";
-    setSelectedMake(make);
-    setSelectedModel("");
-    setTankSize(null);
-  }}
-  className="w-full p-2 rounded border"
->
-  <option value="">Select Make</option>
-  {makes.map((make) => (
-    <option key={make} value={make}>{make}</option>
-  ))}
-</select>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <p className="text-sm text-gray-700 font-medium">
+              US Gas Price (from converter)
+            </p>
+            <p className="text-lg font-semibold text-gray-900 mt-1">
+              {usdPerGallon === 0 ? "—" : usdPerGallon.toFixed(3)} USD / gallon
+            </p>
+          </div>
 
-<select
-  value={selectedModel}
-  onChange={(e) => setSelectedModel(e.target.value)}
-  className="w-full p-2 rounded border"
-  disabled={!selectedMake}
->
-  <option value="">Select Model</option>
-  {models.map((model) => (
-    <option key={model} value={model}>{model}</option>
-  ))}
-</select>
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+            <p className="text-sm text-gray-700 font-medium">
+              Canadian Gas Price (Manual)
+            </p>
+            <p className="text-lg font-semibold text-gray-900 mt-1">
+              {manualCadPrice === 0 ? "—" : manualCadPrice.toFixed(3)} CAD / litre
+            </p>
+          </div>
 
-{tankSize && (
-  <p className="text-sm text-gray-600">
-    Tank size: <span className="font-medium">{tankSize} L</span>
-  </p>
-)}
+          <select
+            value={selectedMake}
+            onChange={(e) => {
+              const make = e.target.value as Make | "";
+              setSelectedMake(make);
+              setSelectedModel("");
+              setTankSize(null);
+            }}
+            className="w-full p-2 rounded border"
+          >
+            <option value="">Select Make</option>
+            {makes.map((make) => (
+              <option key={make} value={make}>{make}</option>
+            ))}
+          </select>
 
-{/* Fuel Gauge */}
-<div className="w-full flex flex-col items-center mt-4">
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="w-full p-2 rounded border"
+            disabled={!selectedMake}
+          >
+            <option value="">Select Model</option>
+            {models.map((model) => (
+              <option key={model} value={model}>{model}</option>
+            ))}
+          </select>
 
-  {/* ENDING LEVEL GAUGE */}
-  <div className="relative w-48 h-24 mb-6">
-    <svg viewBox="0 0 100 50" className="w-full h-full">
-      {/* Background arc */}
-      <path
-        d="M10 50 A40 40 0 0 1 90 50"
-        fill="none"
-        stroke="#e5e7eb"
-        strokeWidth="8"
-      />
+          {tankSize && (
+            <p className="text-sm text-gray-600">
+              Tank size: <span className="font-medium">{tankSize} L</span>
+            </p>
+          )}
 
-      {/* Green fill arc (ending level) */}
-      <path
-        d="M10 50 A40 40 0 0 1 90 50"
-        fill="none"
-        stroke="#22c55e"
-        strokeWidth="8"
-        strokeDasharray="126"
-        strokeDashoffset={126 * (1 - endLevel)}
-        className="transition-all duration-300"
-      />
-    </svg>
+          {/* Fuel Gauge */}
+          <div className="w-full flex flex-col items-center mt-4">
 
-    {/* Needle */}
-    <div
-      className="absolute left-1/2 bottom-0 w-1 h-20 bg-red-600"
-      style={{
-        transform: `translateX(-50%) rotate(${endLevel * 180 - 90}deg)`,
-        transformOrigin: "50% 100%",
-        transition: "transform 0.3s ease",
-      }}
-    />
+            {/* GAUGE */}
+            <div className="relative w-48 h-24 mb-6">
+              <svg viewBox="0 0 100 50" className="w-full h-full">
+                <path
+                  d="M10 50 A40 40 0 0 1 90 50"
+                  fill="none"
+                  stroke="#e5e7eb"
+                  strokeWidth="8"
+                />
 
-    {/* Needle pivot */}
-    <div className="absolute left-1/2 bottom-0 w-4 h-4 bg-gray-700 rounded-full transform -translate-x-1/2 translate-y-1/2" />
-  </div>
+                <path
+                  d="M10 50 A40 40 0 0 1 90 50"
+                  fill="none"
+                  stroke="#22c55e"
+                  strokeWidth="8"
+                  strokeDasharray="126"
+                  strokeDashoffset={126 * (1 - activeGaugeLevel)}
+                  className="transition-all duration-300"
+                />
+              </svg>
 
-  {/* START LEVEL SLIDER */}
-  <div className="w-full mb-4">
-    <p className="text-sm text-gray-700 font-medium mb-1">
-      Starting Fuel Level
-    </p>
-    <input
-      type="range"
-      min={0}
-      max={1}
-      step={0.01}
-      value={startLevel}
-      onChange={(e) => setStartLevel(Number(e.target.value))}
-      className="w-full accent-blue-600"
-    />
-    <p className="text-xs text-gray-600 mt-1">
-      {Math.round(startLevel * 100)}%
-    </p>
-  </div>
+              <div
+                className="absolute left-1/2 bottom-0 w-1 h-20 bg-red-600"
+                style={{
+                  transform: `translateX(-50%) rotate(${activeGaugeLevel * 180 - 90}deg)`,
+                  transformOrigin: "50% 100%",
+                  transition: "transform 0.3s ease",
+                }}
+              />
 
-  {/* END LEVEL SLIDER */}
-  <div className="w-full">
-    <p className="text-sm text-gray-700 font-medium mb-1">
-      Ending Fuel Level (after filling)
-    </p>
-    <input
-      type="range"
-      min={0}
-      max={1}
-      step={0.01}
-      value={endLevel}
-      onChange={(e) => setEndLevel(Number(e.target.value))}
-      className="w-full accent-green-600"
-    />
-    <p className="text-xs text-gray-600 mt-1">
-      {Math.round(endLevel * 100)}%
-    </p>
-  </div>
+              <div className="absolute left-1/2 bottom-0 w-4 h-4 bg-gray-700 rounded-full transform -translate-x-1/2 translate-y-1/2" />
+            </div>
 
-</div>
+            {/* START LEVEL SLIDER */}
+            <div className="w-full mb-4">
+              <p className="text-sm text-gray-700 font-medium mb-1">
+                Starting Fuel Level
+              </p>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={startLevel}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setStartLevel(val);
+                  setActiveGaugeLevel(val); // gauge follows start level
+                }}
+                className="w-full accent-blue-600"
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                {Math.round(startLevel * 100)}%
+              </p>
+            </div>
 
-<button
-  onClick={calculateSavings}
-  className="w-full bg-green-600 text-white px-4 py-3 rounded-lg"
-  disabled={!tankSize || !exchangeRate}
->
-  Calculate Savings
-</button>
+            {/* END LEVEL SLIDER */}
+            <div className="w-full">
+              <p className="text-sm text-gray-700 font-medium mb-1">
+                Ending Fuel Level (after filling)
+              </p>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={endLevel}
+                onChange={(e) => {
+                  const val = Number(e.target.value);
+                  setEndLevel(val);
+                  setActiveGaugeLevel(val); // gauge follows end level
+                }}
+                className="w-full accent-green-600"
+              />
+              <p className="text-xs text-gray-600 mt-1">
+                {Math.round(endLevel * 100)}%
+              </p>
+            </div>
 
-{normalizedSavings !== null && (
-  <p className="text-center text-lg font-semibold text-green-700">
-    You saved ${normalizedSavings.toFixed(2)} CAD by filling up in the U.S.
-  </p>
-)}
+            {/* LITRES ADDED READOUT */}
+            {tankSize && (
+              <div className="w-full mt-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-sm text-gray-700 font-medium">
+                  Fuel Added
+                </p>
+                <p className="text-lg font-semibold text-gray-900 mt-1">
+                  {litresAdded.toFixed(1)} L
+                </p>
 
-</div>
+                {/* VISUAL DIFFERENCE BAR */}
+                <div className="w-full h-3 bg-gray-200 rounded-full mt-3 overflow-hidden">
+                  <div
+                    className="h-full bg-green-500 transition-all duration-300"
+                    style={{ width: `${(endLevel - startLevel) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
+            {/* COST BREAKDOWN */}
+            {tankSize && (
+              <div className="w-full mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+                <p className="text-sm font-medium text-gray-700">Cost Breakdown</p>
+
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Litres Added</span>
+                  <span>{litresAdded.toFixed(2)} L</span>
+                </div>
+
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Cost in Canada</span>
+                  <span>
+                    {(litresAdded * manualCadPrice).toFixed(2)} CAD
+                  </span>
+                </div>
+
+                <div className="flex justify-between text-sm text-gray-600">
+                  <span>Cost in U.S. (converted)</span>
+                  <span>
+                    {(
+                      litresAdded *
+                      ((usdPerGallon / 3.78541) * exchangeRate)
+                    ).toFixed(2)} CAD
+                  </span>
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          <button
+            onClick={calculateSavings}
+            className="w-full bg-green-600 text-white px-4 py-3 rounded-lg"
+            disabled={!tankSize || !exchangeRate}
+          >
+            Calculate Savings
+          </button>
+
+          {normalizedSavings !== null && (
+            <p className="text-center text-lg font-semibold text-green-700">
+              You saved ${normalizedSavings.toFixed(2)} CAD by filling up in the U.S.
+            </p>
+          )}
+
+        </div>
       </main>
 
-      <footer className="w-full py-4 text-center text-sm text-gray-500">
-        &copy; 2024 Gas Price Converter. All rights reserved.
+      <footer className="pb-6 text-center text-gray-400 text-sm">
+        Live rates from open.er-api.com
       </footer>
     </div>
   );
