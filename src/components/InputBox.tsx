@@ -28,7 +28,7 @@ export function InputBox({
         <input type="number" value={amount === 0 ? "" : 
         amount} onChange={(e) => { const raw = e.target.value; 
         onAmountChange(raw === "" ? 0 : Number(raw)); }} disabled={amountDisable} 
-        className=" w-full border border-gray-300 rounded-lg py-2 pr-24 pl-3 text-gray-900 text-base focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500 appearance-none shadow-sm hover:shadow focus:shadow-md transition-shadow " 
+        className=" w-full border border-gray-300 rounded-lg py-2 pr-24 pl-3 text-gray-900 text-2xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100 disabled:text-gray-500 appearance-none shadow-sm hover:shadow focus:shadow-md transition-shadow " 
         step="0.01" />
 
         {/* Inline unit label */}
