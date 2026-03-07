@@ -577,10 +577,12 @@ Calculate Savings
 
   <p>
     <span className="font-medium">Cost in U.S. (converted):</span>{" "}
-    {(
-      litresAdded *
+    <span>
+    {(litresAdded *
       ((usdPerGallon / 3.78541) * exchangeRate)
-    ).toFixed(2)} CAD
+    ).toFixed(2)}{" "}
+    CAD
+  </span>
   </p>
 </div>
 
