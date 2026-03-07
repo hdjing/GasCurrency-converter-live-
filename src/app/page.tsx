@@ -524,77 +524,86 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Cost Breakdown */}
-              {tankSize && (
-                <div className="w-full mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
-                  <p className="text-sm font-medium text-gray-700">Cost Breakdown</p>
+ {/* Cost Breakdown */}
+{tankSize && (
+  <div className="w-full mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
+    <p className="text-sm font-medium text-gray-700">Cost Breakdown</p>
 
-<div className="flex justify-between text-sm text-gray-600">
-  <span>Cost in Canada</span>
-  <span>
-    {(litresAdded * manualCadPrice).toFixed(2)} CAD
-  </span>
-</div>
+    <div className="flex justify-between text-sm text-gray-600">
+      <span>Cost in Canada</span>
+      <span>
+        {(litresAdded * manualCadPrice).toFixed(2)} CAD
+      </span>
+    </div>
 
-<div className="flex justify-between text-sm text-gray-600">
-  <span>Cost in U.S. (converted)</span>
-  <span>
-    {(litresAdded *
-      ((usdPerGallon / 3.78541) * exchangeRate)
-    ).toFixed(2)}{" "}
-    CAD
-  </span>
-</div>
-</div>
+    {/* Only show U.S. converted cost when exchangeRate is loaded */}
+    {exchangeRate !== null && (
+      <div className="flex justify-between text-sm text-gray-600">
+        <span>Cost in U.S. (converted)</span>
+        <span>
+          {(
+            litresAdded *
+            ((usdPerGallon / 3.78541) * exchangeRate)
+          ).toFixed(2)}{" "}
+          CAD
+        </span>
+      </div>
+    )}
+  </div>
 )}
 
 {/* Calculate Savings Button */}
 <button
-onClick={calculateSavings}
-className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition"
-disabled={!tankSize || !exchangeRate}
+  onClick={calculateSavings}
+  className="w-full bg-green-600 text-white px-4 py-3 rounded-lg hover:bg-green-700 transition"
+  disabled={!tankSize || !exchangeRate}
 >
-Calculate Savings
+  Calculate Savings
 </button>
 
 {/* Savings Summary */}
 {normalizedSavings !== null && (
-<div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-5 text-center animate-fadeIn">
-<h3 className="text-xl font-semibold text-green-700 mb-2">
-  Your Savings Summary
-</h3>
+  <div className="mt-6 bg-green-50 border border-green-200 rounded-xl p-5 text-center animate-fadeIn">
+    <h3 className="text-xl font-semibold text-green-700 mb-2">
+      Your Savings Summary
+    </h3>
 
-<div className="space-y-2 text-gray-700">
-  <p>
-    <span className="font-medium">Litres Added:</span>{" "}
-    {litresAdded.toFixed(2)} L
-  </p>
+    <div className="space-y-2 text-gray-700">
+      <p>
+        <span className="font-medium">Litres Added:</span>{" "}
+        {litresAdded.toFixed(2)} L
+      </p>
 
-  <p>
-    <span className="font-medium">Cost in Canada:</span>{" "}
-    {(litresAdded * manualCadPrice).toFixed(2)} CAD
-  </p>
+      <p>
+        <span className="font-medium">Cost in Canada:</span>{" "}
+        {(litresAdded * manualCadPrice).toFixed(2)} CAD
+      </p>
 
-  <p>
-    <span className="font-medium">Cost in U.S. (converted):</span>{" "}
-    <span>
-    {(litresAdded *
-      ((usdPerGallon / 3.78541) * exchangeRate)
-    ).toFixed(2)}{" "}
-    CAD
-  </span>
-  </p>
-</div>
+      {/* Guard this one too */}
+      {exchangeRate !== null && (
+        <p>
+          <span className="font-medium">Cost in U.S. (converted):</span>{" "}
+          <span>
+            {(
+              litresAdded *
+              ((usdPerGallon / 3.78541) * exchangeRate)
+            ).toFixed(2)}{" "}
+            CAD
+          </span>
+        </p>
+      )}
+    </div>
 
-<p className="text-2xl font-bold text-green-700 mt-4">
-  You saved ${normalizedSavings.toFixed(2)} CAD
-</p>
+    <p className="text-2xl font-bold text-green-700 mt-4">
+      You saved ${normalizedSavings.toFixed(2)} CAD
+    </p>
 
-<p className="text-sm text-green-700 mt-1">
-  Great job — that’s real money back in your pocket.
-</p>
-</div>
+    <p className="text-sm text-green-700 mt-1">
+      Great job — that’s real money back in your pocket.
+    </p>
+  </div>
 )}
+
 </div>
 </section>
 
