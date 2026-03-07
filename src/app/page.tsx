@@ -529,11 +529,6 @@ export default function Home() {
                 <div className="w-full mt-4 bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-2">
                   <p className="text-sm font-medium text-gray-700">Cost Breakdown</p>
 
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>Litres Added</span>
-                    <span>{litresAdded.toFixed(2)} L</span>
-                    </div>
-
 <div className="flex justify-between text-sm text-gray-600">
   <span>Cost in Canada</span>
   <span>
@@ -544,10 +539,10 @@ export default function Home() {
 <div className="flex justify-between text-sm text-gray-600">
   <span>Cost in U.S. (converted)</span>
   <span>
-    {(
-      litresAdded *
+    {(litresAdded *
       ((usdPerGallon / 3.78541) * exchangeRate)
-    ).toFixed(2)} CAD
+    ).toFixed(2)}{" "}
+    CAD
   </span>
 </div>
 </div>
