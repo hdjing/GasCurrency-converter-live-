@@ -8,6 +8,11 @@ import { getTankSize } from "@/utils/getTankSize";
 type Make = keyof typeof carTankSizes;
 type Model<M extends Make> = keyof typeof carTankSizes[M];
 
+// Moved outside component to satisfy ESLint
+const LITRES_PER_GALLON = 3.78541;
+const CACHE_KEY = "usd_to_cad_rate";
+const CACHE_DURATION = 60 * 60 * 1000;
+
 export default function Home() {
   // ⭐ Sticky header shrink state
   const [isShrunk, setIsShrunk] = useState(false);
@@ -27,7 +32,6 @@ export default function Home() {
   const [convertedCadPrice, setConvertedCadPrice] = useState(0);
 
   const [exchangeRate, setExchangeRate] = useState<number | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
 
   const [mode, setMode] = useState<"usdToCad" | "cadToUsd">("usdToCad");
 
@@ -41,10 +45,6 @@ export default function Home() {
 
   const [savings, setSavings] = useState<number | null>(null);
 
-  const LITRES_PER_GALLON = 3.78541;
-  const CACHE_KEY = "usd_to_cad_rate";
-  const CACHE_DURATION = 60 * 60 * 1000;
-
   // ⭐ Load exchange rate
   useEffect(() => {
     async function loadRate() {
@@ -57,7 +57,6 @@ export default function Home() {
 
           if (isFresh) {
             setExchangeRate(parsed.rate);
-            setLastUpdated(parsed.timestamp);
             return;
           }
         }
@@ -74,7 +73,6 @@ export default function Home() {
         );
 
         setExchangeRate(rate);
-        setLastUpdated(timestamp);
       } catch (err) {
         console.error("Error fetching exchange rate:", err);
       }
@@ -82,6 +80,7 @@ export default function Home() {
 
     loadRate();
   }, []);
+
 
   // ⭐ Auto-set tank size
   useEffect(() => {
